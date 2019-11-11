@@ -13,16 +13,20 @@
     "start-api": "NODE_ENV=production node graphql/index.js"
   },
   "dependencies": {
+    "apollo-boost": "^0.4.4",
     "apollo-server-express": "^2.4.2",
-    "body-parser": "^1.19.0",
     "bcrypt": "^3.0.0",
+    "body-parser": "^1.19.0",
+    "dayjs": "^1.8.17",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-graphql": "^0.9.0",
     "graphql": "^14.5.8",
     "graphql-tools": "^4.0.6",
+    "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.15",
     "mongodb": "^3.3.3",
+    "nodemailer": "^6.3.1",
     "uuid": "^3.3.3"
   }
 }

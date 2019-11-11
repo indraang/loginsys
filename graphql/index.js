@@ -2,51 +2,21 @@ require("dotenv").config();
 
 const express = require("express");
 const bodyParser = require("body-parser");
-const {ApolloServer, graphqlExpress, graphiqlExpress } = require("apollo-server-express");
+const {
+  ApolloServer,
+  graphqlExpress,
+  graphiqlExpress
+} = require("apollo-server-express");
 const schema = require("./getSchema");
+const { authenticate } = require("./authentication");
 const mongodbConnection = require("./mongodbConnection");
+const getSession = require("./session.json");
+const fetch = require("node-fetch");
+const ApolloClient = require("apollo-boost").default;
+const { gql } = require("apollo-boost");
 
-// const start = async () => {
-//   let app = express();
-//   const collection = await mongodbConnection("LOGINSYS");
+global.fetch = fetch;
 
-//   app.use(
-//     "/graphql",
-//     bodyParser.json({ limit: "20mb" }),
-
-//     graphqlExpress((req, res) => {
-//       try {
-//         return {
-//           schema,
-//           context: {
-//             collection
-//           }
-//         };
-//       } catch (err) {
-//         console.log("graphqlExpress Error:", err);
-//         throw new Error("Internal Server Error");
-//       }
-//     })
-//   );
-//   const dev = process.env.NODE_ENV !== "production";
-//   if (dev) {
-//     console.log("Attaching /graphiql");
-//     app.use(
-//       "/graphiql",
-//       graphiqlExpress({
-//         endpointURL: "/graphql"
-//       })
-//     );
-//   }
-//   const PORT = process.env.GRAPHQL_API_PORT || 3000;
-//   console.log(PORT);
-//   const serverAfterListening = app.listen(PORT, () => {
-//     console.log(
-//       `GraphQL API server running on http://${process.env.GRAPHQL_API_HOST}:${PORT}/graphql`
-//     );
-//   });
-// };
-// start();
 const start = async () => {
   if (!process.env.GRAPHQL_API_HOST || !process.env.GRAPHQL_API_PORT) {
     console.warn("Incomplete environment variables!");
@@ -55,8 +25,14 @@ const start = async () => {
   const collection = await mongodbConnection("LOGINSYS");
   const server = new ApolloServer({
     schema,
-    context: () => {
+    context: async ({ req }) => {
+      const activeSession = await authenticate({
+        session: getSession,
+        collection
+      });
+
       return {
+        activeSession,
         collection
       };
     },
@@ -73,14 +49,42 @@ const start = async () => {
     }
   });
   const app = express();
+  const rest = express();
   app.use(bodyParser.json({ limit: "20mb" }));
+  rest.use(bodyParser.json({ limit: "20mb" }));
   server.applyMiddleware({ app });
   const port = parseInt(process.env.GRAPHQL_API_PORT) || 4000;
+  const restPort = parseInt(process.env.APP_BIND_PORT) || 4300;
+
   await app.listen({
     port
   });
+
+  await rest.listen(restPort);
+  let uri = `http://${process.env.GRAPHQL_API_HOST}:${port}${server.graphqlPath}`;
+  const client = new ApolloClient({
+    uri
+  });
+
+  rest.get("/verify-email", async (req, res) => {
+    let query = await client.mutate({
+      mutation: gql`
+        mutation verifyAccount($_id: ID!) {
+          verifyAccount(_id: $_id)
+        }
+      `,
+      variables: {
+        _id: req.query.id
+      }
+    });
+
+    if (!query.data.verifyAccount) {
+      return res.status(200).send("Account not found!");
+    }
+    return res.status(200).send("Account successfully verified! please login");
+  });
   console.log(
-    `🚀  Server ready at http://localhost:${port}${server.graphqlPath}`
+    `🚀  Server ready at http://${process.env.GRAPHQL_API_HOST}:${port}${server.graphqlPath}`
   );
 };
 
