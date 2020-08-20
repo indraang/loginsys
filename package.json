@@ -15,7 +15,7 @@
   "dependencies": {
     "apollo-boost": "^0.4.4",
     "apollo-server-express": "^2.4.2",
-    "bcrypt": "^3.0.0",
+    "bcrypt": "^5.0.0",
     "body-parser": "^1.19.0",
     "dayjs": "^1.8.17",
     "dotenv": "^8.2.0",
